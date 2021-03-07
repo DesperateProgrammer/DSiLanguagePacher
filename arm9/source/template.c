@@ -245,7 +245,23 @@ int main(void) {
 			strcat(appFileName,fileInfo->d_name) ;
 		} else if (strcmp(fileInfo->d_name + strlen(fileInfo->d_name) - 4, ".tmd") == 0)
 		{
-			// ToDo: If that file is longer than 1k, unlaunch is appended
+			// If that file is longer than 1k, unlaunch is appended
+			// Todo: get version of unlaunch
+			struct stat *tmdInfo ;
+			char *tmdFileName = (char *)malloc(260) ;
+			strcpy(tmdFileName,appLauncherDirName) ;
+			strcat(tmdFileName,"/") ;
+			strcat(tmdFileName,fileInfo->d_name) ;			
+			stat(tmdFileName, tmdInfo) ;
+			free(tmdFileName) ;
+			unlaunchInstalled = (tmdInfo->st_size > 1024) ;
+			if (unlaunchInstalled)
+			{
+				Log(LOGLEVEL_INFO, "[i] Unlaunch is installed\n") ;
+			} else
+			{
+				Log(LOGLEVEL_INFO, "[i] Unlaunch is not installed\n") ;
+			}
 		}
 	}
 	if (!appFileName)
