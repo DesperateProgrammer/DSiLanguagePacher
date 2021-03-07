@@ -18,6 +18,7 @@
 
 PrintConsole topScreen;
 PrintConsole bottomScreen;
+PrintConsole *currentScreen = &topScreen ;
 
 const u8 patternLangMaskPatch[] =
 	{ 0x01, 0x48, 0x00, 0x68, 0x70, 0x47, 0xC0, 0x46, 0x68, 0xFD, 0xFF, 0x02 } ;
@@ -98,14 +99,16 @@ void Log(LOGLEVEL level, const char *format, ...)
 	va_start(ap, format);
 	vprintf(format, ap) ;
 	va_end(ap);
-	if (consoleGetDefault()->cursorY >= 21)
+	if (currentScreen->cursorY >= 23)
 	{
-		if (consoleGetDefault() == &topScreen)
+		if (currentScreen == &topScreen)
 		{
 			consoleSelect(&bottomScreen);
+			currentScreen = &bottomScreen;
 		} else
 		{
 			consoleSelect(&topScreen);
+			currentScreen = &topScreen;
 		}
 		consoleClear() ;
 	}
