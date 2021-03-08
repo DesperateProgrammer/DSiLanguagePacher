@@ -1,4 +1,4 @@
-name: Build GodMode9i
+name: Build DSiLanguagePatcher
 
 on:
   push:
