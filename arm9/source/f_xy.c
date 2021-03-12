@@ -2,7 +2,6 @@
 #include <string.h>
 #include <malloc.h>
 #include <stdint.h>
-#include "tonccpy.h"
 
 //#define DEBUG
 
@@ -58,8 +57,8 @@ void F_XY(uint32_t *key, uint32_t *key_x, uint32_t *key_y)
 	int i;
 	unsigned char key_xy[16];
 
-	toncset(key_xy, 0, 16);
-	toncset(key, 0, 16);
+	memset(key_xy, 0, 16);
+	memset(key, 0, 16);
 	for(i=0; i<16; i++)key_xy[i] = ((unsigned char*)key_x)[i] ^ ((unsigned char*)key_y)[i];
 
 	key[0] = 0x1a4f3e79;
@@ -75,9 +74,9 @@ void F_XY(uint32_t *key, uint32_t *key_x, uint32_t *key_y)
 void F_XY_reverse(uint32_t *key, uint32_t *key_xy)
 {
 	uint32_t tmpkey[4];
-	toncset(key_xy, 0, 16);
-	toncset(tmpkey, 0, 16);
-	tonccpy(tmpkey, key, 16);
+	memset(key_xy, 0, 16);
+	memset(tmpkey, 0, 16);
+	memcpy(tmpkey, key, 16);
 
 	key_xy[0] = 0x1a4f3e79;
 	key_xy[1] = 0x2a680f5f;
@@ -86,6 +85,6 @@ void F_XY_reverse(uint32_t *key, uint32_t *key_xy)
 
 	n128_rrot((uint64_t*)tmpkey, 42);
 	n128_sub((uint64_t*)tmpkey, (uint64_t*)key_xy);
-	tonccpy(key_xy, tmpkey, 16);
+	memcpy(key_xy, tmpkey, 16);
 }
 
