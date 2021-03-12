@@ -45,10 +45,15 @@ void getConsoleID(u8 *consoleID){
 }
 
 bool nandio_startup() {
-	if (!nand_Startup()) return false;
+	if (!nand_Startup()) 
+  {
+    iprintf("Failed nandio_startup\r\n");
+    return false;
+  }
 
 	nand_ReadSectors(0, 1, sector_buf);
-	is3DS = parse_ncsd(sector_buf, 0) == 0;
+  iprintf("NCSD check: %i\r\n", parse_ncsd(sector_buf)) ;
+	is3DS = parse_ncsd(sector_buf) == 0;
 	//if (is3DS) return false;
 
 	u8 consoleID[8];
@@ -62,7 +67,9 @@ bool nandio_startup() {
 	// iprintf("sector 0 is %s\n", is3DS ? "3DS" : "DSi");
 	dsi_crypt_init((const u8*)consoleIDfixed, (const u8*)0x2FFD7BC, is3DS);
 	dsi_nand_crypt(sector_buf, sector_buf, 0, SECTOR_SIZE / AES_BLOCK_SIZE);
-	parse_mbr(sector_buf, is3DS, 0);
+
+	parse_mbr(sector_buf, is3DS);
+  iprintf("mbr check: %i\r\n", parse_mbr(sector_buf, is3DS)) ;
 
 	mbr_t *mbr = (mbr_t*)sector_buf;
 	
