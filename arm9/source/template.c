@@ -9,7 +9,7 @@
 #include "crypto.h"
 #include "f_xy.h"
 #include "polarssl/aes.h"
-#include "dsi.h"
+#include "twltool/dsi.h"
 
 #define TARGETBUFFER 0x02900000
 
