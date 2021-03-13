@@ -1,7 +1,7 @@
 #ifndef _DSI_H_
 #define _DSI_H_
 
-#include "aes.h"
+#include "polarssl/aes.h"
 
 typedef struct
 {

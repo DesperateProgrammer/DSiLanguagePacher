@@ -6,10 +6,9 @@
 #include<stdio.h>
 #include <dirent.h>
 #include <stdint.h>
-#include "aes.h"
 #include "crypto.h"
 #include "f_xy.h"
-#include "aes.h"
+#include "polarssl/aes.h"
 #include "dsi.h"
 
 #define TARGETBUFFER 0x02900000
