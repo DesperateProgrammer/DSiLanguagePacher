@@ -1,91 +1,98 @@
-#include <stdio.h>
+/* f_xy.c
+ *
+ * This file was imported from godmode9i, but it is liely not the
+ * original source. twltool uses the same file.
+ *
+ * If you happen to know whom to credit I'd love to add the name
+ *
+ * Refactored to reduce the pointer casts and remove the dependency 
+ * from tonccpy.
+ */
+
 #include <string.h>
-#include <malloc.h>
 #include <stdint.h>
-#include "tonccpy.h"
 
-//#define DEBUG
+/************************ Constants / Defines *********************************/
 
-void n128_lrot(uint64_t *num, uint32_t shift)
+static const uint8_t keyconst[] = { 0x79, 0x3e, 0x4f, 0x1a, 0x5f, 0x0f, 0x68, 0x2a,
+                                    0x58, 0x02, 0x59, 0x29, 0x4e, 0xfb, 0xfe, 0xff }; 
+
+/************************ Functions *******************************************/
+
+// rotate a 128bit, little endian by shift bits in direction of increasing significance.
+void n128_lrot(uint8_t *num, uint32_t shift)
 {
-	uint64_t tmp[2];
-
-	tmp[0] = num[0]<<shift;
-	tmp[1] = num[1]<<shift;
-	tmp[0] |= (num[1]>>(64-shift));
-	tmp[1] |= (num[0]>>(64-shift));
-
-	num[0] = tmp[0];
-	num[1] = tmp[1];
-}
-void n128_rrot(uint64_t *num, uint32_t shift)
-{
-	uint64_t tmp[2];
-
-	tmp[0] = num[0]>>shift;
-	tmp[1] = num[1]>>shift;
-	tmp[0] |= (num[1]<<(64-shift));
-	tmp[1] |= (num[0]<<(64-shift));
-
-	num[0] = tmp[0];
-	num[1] = tmp[1];
+  uint8_t tmp[16];
+  for (int i=0;i<16;i++)
+  {
+    // rot: rotate to more significant.
+    // LSB is tmp[0], MSB is tmp[15]
+    const uint32_t byteshift = shift / 8 ;
+    const uint32_t bitshift = shift % 8;
+    tmp[(i+byteshift) % 16] = (num[i] << bitshift)
+           | ((num[(i-1) % 16] >> (8-bitshift)) & 0xff);    
+  }
+  memcpy(num, tmp, 16) ;
 }
 
-void n128_add(uint64_t *a, uint64_t *b)
+// rotate a 128bit, little endian by shift bits in direction of decreasing significance.
+void n128_rrot(uint8_t *num, uint32_t shift)
 {
-	uint64_t *a64 = a;
-	uint64_t *b64 = b;
-	uint64_t tmp = (a64[0]>>1)+(b64[0]>>1) + (a64[0] & b64[0] & 1);
-	 
-	tmp = tmp >> 63;
-        a64[0] = a64[0] + b64[0];
-        a64[1] = a64[1] + b64[1] + tmp;
+  uint8_t tmp[16];
+  for (int i=0;i<16;i++)
+  {
+    // rot: rotate to less significant.
+    // LSB is tmp[0], MSB is tmp[15]
+    const uint32_t byteshift = shift / 8 ;
+    const uint32_t bitshift = shift % 8;
+    tmp[i] = (num[(i+byteshift) % 16] >> bitshift)
+           | ((num[(i+byteshift+1) % 16] << (8-bitshift)) & 0xff);    
+  }
+  memcpy(num, tmp, 16) ;
 }
 
-void n128_sub(uint64_t *a, uint64_t *b)
+// add two 128bit, little endian values and store the result into the first
+void n128_add(uint8_t *a, const uint8_t *b)
 {
-	uint64_t *a64 = a;
-	uint64_t *b64 = b;
-	uint64_t tmp = (a64[0]>>1)-(b64[0]>>1) - ((a64[0]>>63) & (b64[0]>>63) & 1);
-        
-	tmp = tmp >> 63;
-        a64[0] = a64[0] - b64[0];
-        a64[1] = a64[1] - b64[1] - tmp;
+  uint8_t carry = 0 ;
+  for (int i=0;i<16;i++)
+  {
+    uint16_t sum = a[i] + b[i] + carry ;
+    a[i] = sum & 0xff ;
+    carry = sum >> 8 ;
+  }
 }
 
-void F_XY(uint32_t *key, uint32_t *key_x, uint32_t *key_y)
+// sub two 128bit, little endian values and store the result into the first
+void n128_sub(uint8_t *a, const uint8_t *b)
 {
-	int i;
-	unsigned char key_xy[16];
+  uint8_t carry = 0 ;
+  for (int i=0;i<16;i++)
+  {
+    uint16_t sub = a[i] - b[i] - (carry & 1);
+    a[i] = sub & 0xff ;
+    carry = sub >> 8 ;
+  }
+}
 
-	toncset(key_xy, 0, 16);
-	toncset(key, 0, 16);
-	for(i=0; i<16; i++)key_xy[i] = ((unsigned char*)key_x)[i] ^ ((unsigned char*)key_y)[i];
+void F_XY(uint8_t *key, const uint8_t *key_x, const uint8_t *key_y)
+{
+	uint8_t key_xy[16];
 
-	key[0] = 0x1a4f3e79;
-	key[1] = 0x2a680f5f;
-	key[2] = 0x29590258;
-	key[3] = 0xfffefb4e;
+	for(int i=0; i<16; i++)
+    key_xy[i] = key_x[i] ^ key_y[i];
 
-	n128_add((uint64_t*)key, (uint64_t*)key_xy);
-	n128_lrot((uint64_t*)key, 42);
+  memcpy(key, keyconst, sizeof(keyconst));
+
+	n128_add(key, key_xy);
+	n128_lrot(key, 42);
 }
 
 //F_XY_reverse does the reverse of F(X^Y): takes (normal)key, and does F in reverse to generate the original X^Y key_xy.
-void F_XY_reverse(uint32_t *key, uint32_t *key_xy)
+void F_XY_reverse(const uint8_t *key, uint8_t *key_xy)
 {
-	uint32_t tmpkey[4];
-	toncset(key_xy, 0, 16);
-	toncset(tmpkey, 0, 16);
-	tonccpy(tmpkey, key, 16);
-
-	key_xy[0] = 0x1a4f3e79;
-	key_xy[1] = 0x2a680f5f;
-	key_xy[2] = 0x29590258;
-	key_xy[3] = 0xfffefb4e;
-
-	n128_rrot((uint64_t*)tmpkey, 42);
-	n128_sub((uint64_t*)tmpkey, (uint64_t*)key_xy);
-	tonccpy(key_xy, tmpkey, 16);
+	memcpy(key_xy, key, 16);
+	n128_rrot(key_xy, 42);
+	n128_sub(key_xy, keyconst);
 }
 
