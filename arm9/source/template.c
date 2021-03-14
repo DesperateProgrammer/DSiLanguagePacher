@@ -10,6 +10,8 @@
 #include "f_xy.h"
 #include "polarssl/aes.h"
 #include "twltool/dsi.h"
+#include "f_xy.h"
+#include "u128_math.h"
 
 #define TARGETBUFFER 0x02900000
 
@@ -299,7 +301,7 @@ int main(void) {
 	if (target[0x01C] & 2)
 	{
 		u8 key[16] = {0} ;
-		u8 keyp[2*16] = {0} ;
+		u8 keyp[16] = {0} ;
 		Log(LOGLEVEL_PROGRESS, "[-] Undo modcrypt\n") ;
 		if (target[0x01C] & 4)
 		{
@@ -317,15 +319,11 @@ int main(void) {
 				keyp[8+i] = target[0x0c+i] ;
 				keyp[15-i] = target[0x0c+i] ;
 			}
-			memcpy(keyp+16, target+0x350, 16) ;
+			memcpy(key, target+0x350, 16) ;
 			
-				// Key = ((Key_X XOR Key_Y) + FFFEFB4E295902582A680F5F1A4F3E79h) ROL 42
-			// equivalent to F_XY in twltool/f_xy.c
-			const uint32_t DSi_KEY_MAGIC[4] =
-				{0x1a4f3e79u, 0x2a680f5fu, 0x29590258u, 0xfffefb4eu};			
-			xor_128((uint32_t *)key, (uint32_t *)keyp, (uint32_t *)(keyp+16));
-			add_128((uint32_t *)key, DSi_KEY_MAGIC);
-			rol42_128((uint32_t *)key);	
+			u128_xor(key, keyp);
+			u128_add(key, DSi_KEY_MAGIC);
+      u128_lrot(key, 42) ;
 		}
 		uint32_t modcryptOffsets[2], modcryptLengths[2] ;
 		modcryptOffsets[0] = ((uint32_t *)(target+0x220))[0] ;

@@ -16,6 +16,13 @@
 extern "C" {
 #endif
 
+/************************ Constants / Defines *********************************/
+
+extern const uint8_t DSi_KEY_MAGIC[16] ;
+extern const uint8_t DSi_NAND_KEY_Y[16] ;
+extern const uint8_t DSi_ES_KEY_Y[16] ;
+extern const uint8_t DSi_BOOT2_KEY[16] ;
+
 /************************ Function Protoypes **********************************/
 
 void F_XY(uint8_t *key, const uint8_t *key_x, const uint8_t *key_y);

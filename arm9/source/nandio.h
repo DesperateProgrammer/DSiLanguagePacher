@@ -1,11 +1,19 @@
 #pragma once
 
-#include <nds.h>
+#include <stdint.h>
 #include <nds/disc_io.h>
 
-void nandio_set_fat_sig_fix(u32 offset);
+/************************ Constants / Defines *********************************/
 
-extern const DISC_INTERFACE io_dsi_nand;
-void getConsoleID(u8 *consoleID) ;
+#define CRYPT_BUF_LEN         64
+#define NAND_DEVICENAME       (('N' << 24) | ('A' << 16) | ('N' << 8) | 'D')
+
+extern const DISC_INTERFACE   io_dsi_nand;
+
+/************************ Function Protoypes **********************************/
+
+void nandio_set_fat_sig_fix(uint32_t offset);
+
+void getConsoleID(uint8_t *consoleID) ;
 
 extern bool nandio_shutdown() ;

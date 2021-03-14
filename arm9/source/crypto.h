@@ -2,9 +2,25 @@
 
 #include <nds.h>
 
-#define SHA1_LEN 20
+/************************ Constants / Defines *********************************/
 
-#define AES_BLOCK_SIZE 16
+#define AES_BLOCK_SIZE          16
+#define SHA1_LEN                20
+
+#define KEYSEED_DSI_NAND_0      0x24ee6906
+#define KEYSEED_DSI_NAND_1      0xe65b601d
+
+#define KEYSEED_3DS_NAND_0      0xb358a6af
+#define KEYSEED_3DS_NAND_1      0x544e494e
+#define KEYSEED_3DS_NAND_2      0x4f444e45
+#define KEYSEED_3DS_NAND_3      0x08c267b7
+
+#define KEYSEED_ES_0            0x4e00004a
+#define KEYSEED_ES_1            0x4a00004e
+#define KEYSEED_ES_2            0xc80c4b72
+
+
+
 
 typedef enum {
 	ENCRYPT,
@@ -17,10 +33,6 @@ typedef enum {
 	ES
 } key_mode_t;
 
-void xor_128(uint32_t *x, const uint32_t *a, const uint32_t *b);
-void add_128(uint32_t *a, const uint32_t *b);
-void add_128_32(uint32_t *a, uint32_t b);
-void rol42_128(uint32_t *a);
 
 // don't want to include nds.h just for this
 void swiSHA1Calc(void *digest, const void *buf, size_t len);
