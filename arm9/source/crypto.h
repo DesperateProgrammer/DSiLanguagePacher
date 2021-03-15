@@ -19,7 +19,16 @@
 #define KEYSEED_ES_1            0x4a00004e
 #define KEYSEED_ES_2            0xc80c4b72
 
-
+#define GET_UINT32_BE(n, b, i) \
+	((uint8_t*)&(n))[0] = (b)[i + 3]; \
+	((uint8_t*)&(n))[1] = (b)[i + 2]; \
+	((uint8_t*)&(n))[2] = (b)[i + 1]; \
+	((uint8_t*)&(n))[3] = (b)[i + 0]
+#define PUT_UINT32_BE(n, b, i) \
+	(b)[i + 0] = ((uint8_t*)&(n))[3]; \
+	(b)[i + 1] = ((uint8_t*)&(n))[2]; \
+	(b)[i + 2] = ((uint8_t*)&(n))[1]; \
+	(b)[i + 3] = ((uint8_t*)&(n))[0]
 
 
 typedef enum {

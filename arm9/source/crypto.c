@@ -1,24 +1,22 @@
 #include <stdint.h>
-#include "_aes.h"
 #include "crypto.h"
 #include "u128_math.h"
 #include "f_xy.h"
+#include "twltool/dsi.h"
 
 // more info:
 //		https://github.com/Jimmy-Z/TWLbf/blob/master/dsi.c
 //		https://github.com/Jimmy-Z/bfCL/blob/master/dsi.h
 // ported back to 32 bit for ARM9
 
-static uint32_t nand_rk[RK_LEN];
-static uint32_t es_rk[RK_LEN];
-static uint32_t boot2_rk[RK_LEN];
+static dsi_context nand_ctx ;
+static dsi_context boot2_ctx ;
+static dsi_context es_ctx ;
 
 static uint8_t nand_ctr_iv[16];
 static uint8_t boot2_ctr[16];
-static int tables_generated = 0;
 
-
-static void dsi_aes_set_key(uint32_t *rk, const uint32_t *console_id, key_mode_t mode) 
+static void generate_key(uint8_t *generated_key, const uint32_t *console_id, const key_mode_t mode)
 {
 	uint32_t key[4];
 	switch (mode) 
@@ -47,7 +45,7 @@ static void dsi_aes_set_key(uint32_t *rk, const uint32_t *console_id, key_mode_t
 	u128_xor(key, mode == ES ? DSi_ES_KEY_Y : DSi_NAND_KEY_Y);
 	u128_add(key, DSi_KEY_MAGIC);
   u128_lrot(key, 42) ;
-	aes_set_key_enc_128_be(rk, (uint8_t*)key);
+  memcpy(generated_key, key, 16) ;
 }
 
 int dsi_sha1_verify(const void *digest_verify, const void *data, unsigned len) 
@@ -58,21 +56,19 @@ int dsi_sha1_verify(const void *digest_verify, const void *data, unsigned len)
 }
 
 void dsi_crypt_init(const uint8_t *console_id_be, const uint8_t *emmc_cid, int is3DS) 
-{
-	if (tables_generated == 0) 
-  {
-		aes_gen_tables();
-		tables_generated = 1;
-	}
-	
+{	
 	uint32_t console_id[2];
 	GET_UINT32_BE(console_id[0], console_id_be, 4);
 	GET_UINT32_BE(console_id[1], console_id_be, 0);
 
-	dsi_aes_set_key(nand_rk, console_id, is3DS ? NAND_3DS : NAND);
-	dsi_aes_set_key(es_rk, console_id, ES);
+	uint8_t key[16];
+  generate_key(key, console_id, is3DS ? NAND_3DS : NAND);
+  dsi_set_key(&nand_ctx, key) ;
 
-	aes_set_key_enc_128_be(boot2_rk, (uint8_t*)DSi_BOOT2_KEY);
+  generate_key(key, console_id, ES);
+  dsi_set_key(&es_ctx, key) ;
+
+  dsi_set_key(&boot2_ctx, DSi_BOOT2_KEY) ;
 
 	swiSHA1Calc(nand_ctr_iv, emmc_cid, 16);
 
@@ -93,7 +89,8 @@ void dsi_nand_crypt_1(uint8_t* out, const uint8_t* in, uint32_t offset)
 	uint8_t ctr[16] ;
   memcpy(ctr, nand_ctr_iv, sizeof(nand_ctr_iv)) ;
 	u128_add32(ctr, offset);
-	aes_ctr(nand_rk, ctr, (uint32_t*)in, (uint32_t*)out);
+  dsi_set_ctr(&nand_ctx, ctr) ;
+  dsi_crypt_ctr(&nand_ctx, in, out, 16) ;
 }
 
 void dsi_nand_crypt(uint8_t* out, const uint8_t* in, uint32_t offset, unsigned count) 
@@ -103,7 +100,8 @@ void dsi_nand_crypt(uint8_t* out, const uint8_t* in, uint32_t offset, unsigned c
 	u128_add32(ctr, offset);
 	for (unsigned i = 0; i < count; ++i) 
   {
-		aes_ctr(nand_rk, ctr, (uint32_t*)in, (uint32_t*)out);
+    dsi_set_ctr(&nand_ctx, ctr) ;
+    dsi_crypt_ctr(&nand_ctx, in, out, 16) ;
 		out += AES_BLOCK_SIZE;
 		in += AES_BLOCK_SIZE;
     u128_add32(ctr, 1);
@@ -125,7 +123,8 @@ void dsi_boot2_crypt(uint8_t* out, const uint8_t* in, unsigned count)
 {
 	for (unsigned i = 0; i < count; ++i) 
   {
-		aes_ctr(boot2_rk, boot2_ctr, (uint32_t*)in, (uint32_t*)out);
+    dsi_set_ctr(&boot2_ctx, boot2_ctr) ;
+    dsi_crypt_ctr(&boot2_ctx, in, out, 16) ;
 		out += AES_BLOCK_SIZE;
 		in += AES_BLOCK_SIZE;
     u128_add32(boot2_ctr, 1);
