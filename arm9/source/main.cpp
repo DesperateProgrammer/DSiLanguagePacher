@@ -13,6 +13,7 @@
 #include "u128_math.h"
 #include "patch.h"
 #include "patch_data.h"
+#include "system_info.h"
 
 #define TARGETBUFFER 0x02900000
 
@@ -35,23 +36,6 @@ void humanReadableByteSize(long size, char *buffer, int bufferLen)
 	const char exponents[] = {' ', 'k', 'M', 'G', 'T'} ;
 	snprintf(buffer, bufferLen, "%li.%u %cB", full, (u8)deci, exponents[exponent]) ;
 }
-
-struct SREGIONINFO
-{
-	u8 						code;
-	char 					folderKey;
-	const char *	name;
-} ;
-
-struct SREGIONINFO knownRegions[] = 
-{
-	{0, 'J', "Japan"},
-	{1, 'E', "N.America"},
-	{2, 'P', "Europe"},
-	{3, 'U', "Australia"},
-	{4, 'C', "China"},
-	{5, 'K', "Korea"}
-} ;
 
 typedef enum LOGLEVEL
 {
@@ -86,8 +70,6 @@ void Log(LOGLEVEL level, const char *format, ...)
 			;
 	}
 }
-
-#define min(a,b) (((a)<(b))?(a):(b))
 
 void decrypt_modcrypt_area(dsi_context* ctx, u8 *buffer, unsigned int size)
 {
@@ -170,28 +152,13 @@ int main(void) {
 	Log(LOGLEVEL_INFO, "[i] NAND Size: %s\n", buffer);
 	
 	Log(LOGLEVEL_PROGRESS, "[-] Locating Launcher\n") ;
-	DIR * appLauncherDir = 0 ;
-	int launcherRegion = -1 ;
+	uint8_t launcherRegion = 0 ;
 	
-	char * appLauncherDirName = 0;
+	char * appLauncherDirName = system_getLauncherPath(&launcherRegion);
 	
-	for (uint32_t i=0;i<sizeof(knownRegions) / sizeof(*knownRegions);i++)
+	if (!appLauncherDirName)
 	{
-	// nand:/title/00030017/484e41??/content
-		static char folderToCheck[260] = {0};
-		siprintf(folderToCheck, "nand:title/00030017/484e41%02x/content", knownRegions[i].folderKey) ;
-		appLauncherDir = opendir(folderToCheck) ;
-		if (appLauncherDir)
-		{
-			appLauncherDirName = strdup(folderToCheck) ;
-			launcherRegion = i ;
-			break;
-		}
-	}
-	
-	if (!appLauncherDir)
-	{
-		Log(LOGLEVEL_ERROR, "[E] Could not enter folder\n");
+		Log(LOGLEVEL_ERROR, "[E] Could not find folder\n");
 	}
 	
 	Log(LOGLEVEL_INFO, "[i] Launcher Region:\n      %s\n",  knownRegions[launcherRegion].name);
@@ -200,72 +167,48 @@ int main(void) {
 		Log(LOGLEVEL_ERROR, "[E] Launcher is not japanese\n");
 	}	
 	
-	char * appFileName = 0 ;
+	char * appFileName = system_getAppFilename(appLauncherDirName) ;
+  char * tmdFileName = system_getTmdFilename(appLauncherDirName) ;
+  
+  
 	bool unlaunchInstalled = false ;
-	struct dirent *fileInfo;
-	while ((fileInfo=readdir(appLauncherDir))!=NULL) 
-	{
-		if (strcmp(fileInfo->d_name + strlen(fileInfo->d_name) - 4, ".app") == 0)
-		{
-			appFileName = (char *)malloc(260) ;
-			strcpy(appFileName,appLauncherDirName) ;
-			strcat(appFileName,"/") ;
-			strcat(appFileName,fileInfo->d_name) ;
-		} else if (strcmp(fileInfo->d_name + strlen(fileInfo->d_name) - 4, ".tmd") == 0)
-		{
-			// If that file is longer than 1k, unlaunch is appended
-			// Todo: get version of unlaunch
-			struct stat tmdInfo ;
-      memset(&tmdInfo, 0, sizeof(tmdInfo)) ;
-			char *tmdFileName = (char *)malloc(260) ;
-			strcpy(tmdFileName,appLauncherDirName) ;
-			strcat(tmdFileName,"/") ;
-			strcat(tmdFileName,fileInfo->d_name) ;			
-			stat(tmdFileName, &tmdInfo) ;
-			free(tmdFileName) ;
-			unlaunchInstalled = (tmdInfo.st_size > 1024) ;
-			if (unlaunchInstalled)
-			{
-				Log(LOGLEVEL_INFO, "[i] Unlaunch is installed\n") ;
-			} else
-			{
-				Log(LOGLEVEL_INFO, "[i] Unlaunch is not installed\n") ;
-			}
-		}
-	}
+	
+  // If that file is longer than 1k, unlaunch is appended
+  // Todo: get version of unlaunch
+  struct stat tmdInfo ;
+  memset(&tmdInfo, 0, sizeof(tmdInfo)) ;	
+  stat(tmdFileName, &tmdInfo) ;
+  free(tmdFileName) ;
+  unlaunchInstalled = (tmdInfo.st_size > 1024) ;
+  
+  
+  if (unlaunchInstalled)
+  {
+    Log(LOGLEVEL_INFO, "[i] Unlaunch is installed\n") ;
+  } else
+  {
+    Log(LOGLEVEL_INFO, "[i] Unlaunch is not installed\n") ;
+  }
+
 	if (!appFileName)
 	{
 		Log(LOGLEVEL_ERROR, "[E] Could not find app\n");
 	}
 	
-	FILE *f = fopen(appFileName, "rb") ;
-	fseek(f, 0, SEEK_END) ;
-	long appLauncherSize = ftell(f) ;
-	fseek(f, 0, SEEK_SET) ;
-	
+	Log(LOGLEVEL_PROGRESS, "[-] Reading launcher\n") ;
+
+  uint8_t *target = (uint8_t *)TARGETBUFFER ;
+	uint32_t appLauncherSize = system_readFile(target, appFileName) ;
 	
 	humanReadableByteSize(appLauncherSize, buffer, sizeof(buffer)) ;
 	Log(LOGLEVEL_INFO, "[i] Launcher Size: %s\n", buffer);	
 
 
-	Log(LOGLEVEL_PROGRESS, "[-] Reading launcher\n") ;
-	long pos = 0 ;
-	u8 *target = (u8 *)TARGETBUFFER ;
-	while (pos < appLauncherSize)
-	{
-		long read = fread(target, 1, min(512, (appLauncherSize-pos)), f) ;
-		pos += read ;
-		target += read ;
-	}
-	fclose(f) ;
-	
-	if (pos != appLauncherSize)
+	if (!appLauncherSize)
 	{
 		Log(LOGLEVEL_ERROR, "[E] Could not read launcher\n");
 	}
-	Log(LOGLEVEL_PROGRESS, "[-] Reading done\n") ;
 	
-	target = (u8 *)TARGETBUFFER ;
 	if (target[0x01C] & 2)
 	{
 		u8 key[16] = {0} ;
@@ -380,22 +323,16 @@ int main(void) {
 		{
 			// we will write the file back to NAND at root
 			Log(LOGLEVEL_PROGRESS, "[-] writing ...\n") ;
-#if 1
-			pos = 0 ;
-			target = (u8 *)TARGETBUFFER ;
-			f = fopen("nand:/launcher.dsi", "wb+") ;
-			if (!f)
+      uint32_t written = system_writeFile((uint8_t *)TARGETBUFFER, appLauncherSize, "nand:/launcher.dsi") ;
+			if (!written)
 			{
 				Log(LOGLEVEL_ERROR, "[E] Create file failed\n    You can turn off now\n") ;
 			}
-			while (pos < appLauncherSize)
+			if (written < appLauncherSize)
 			{
-				long written = fwrite(target, 1, min(256, (appLauncherSize-pos)), f) ;
-				pos += written ;
-				target += written ;
+				Log(LOGLEVEL_ERROR, "[E] Write file failed\n    You can turn off now\n") ;
 			}
-#endif
-			fclose(f) ;
+
 			Log(LOGLEVEL_PROGRESS, "[-] Unmounting\n") ;
 			fatUnmount("nand:") ;
 			Log(LOGLEVEL_PROGRESS, "[-] Merging stages\n");
