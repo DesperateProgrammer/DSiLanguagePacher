@@ -9,6 +9,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <assert.h>
 
@@ -160,3 +164,6 @@ static_assert(sizeof(ncsd_header_t) == NCSD_HEADERSIZE,
 static_assert(sizeof(mbr_t) == SECTOR_SIZE, 
                 "sizeof(mbr_t) should equal 0x200");
 
+#ifdef __cplusplus
+}
+#endif

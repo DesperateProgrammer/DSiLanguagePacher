@@ -173,9 +173,9 @@ int main(void) {
 	DIR * appLauncherDir = 0 ;
 	int launcherRegion = -1 ;
 	
-	char * appLauncherDirName = "";
+	char * appLauncherDirName = 0;
 	
-	for (int i=0;i<sizeof(knownRegions) / sizeof(*knownRegions);i++)
+	for (uint32_t i=0;i<sizeof(knownRegions) / sizeof(*knownRegions);i++)
 	{
 	// nand:/title/00030017/484e41??/content
 		static char folderToCheck[260] = {0};

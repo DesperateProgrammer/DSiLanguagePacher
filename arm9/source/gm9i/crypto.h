@@ -2,6 +2,10 @@
 
 #include <nds.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /************************ Constants / Defines *********************************/
 
 #define AES_BLOCK_SIZE          16
@@ -60,3 +64,7 @@ int dsi_es_block_crypt(uint8_t *buf, unsigned buf_len, crypt_mode_t mode);
 void dsi_boot2_crypt_set_ctr(uint32_t size_r);
 
 void dsi_boot2_crypt(uint8_t* out, const uint8_t* in, unsigned count);
+
+#ifdef __cplusplus
+}
+#endif

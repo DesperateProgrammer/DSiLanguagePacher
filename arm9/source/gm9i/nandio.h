@@ -3,6 +3,10 @@
 #include <stdint.h>
 #include <nds/disc_io.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /************************ Constants / Defines *********************************/
 
 #define CRYPT_BUF_LEN         64
@@ -17,3 +21,7 @@ void nandio_set_fat_sig_fix(uint32_t offset);
 void getConsoleID(uint8_t *consoleID) ;
 
 extern bool nandio_shutdown() ;
+
+#ifdef __cplusplus
+}
+#endif

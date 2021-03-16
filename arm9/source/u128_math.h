@@ -2,6 +2,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // left rotate by (shift % 128) bits
 void u128_lrot(uint8_t *num, uint32_t shift) ;
 
@@ -28,3 +32,7 @@ void u128_sub(uint8_t *a, const uint8_t *b) ;
 
 // swap byte order 
 void u128_swap(uint8_t *out, const uint8_t *in) ;
+
+#ifdef __cplusplus
+}
+#endif

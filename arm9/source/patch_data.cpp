@@ -26,11 +26,24 @@ const uint8_t patchRegionPatch[] =
             Target Region
 */
 
+const uint8_t regionJPN[] = { 0x00 } ;
+const uint8_t regionNA[] = { 0x01 } ;
+const uint8_t regionEUR[] = { 0x02 } ;
+const uint8_t regionA[] = { 0x03 } ;
+
+const SPATCHOPTION patchOptionsRegions[] = 
+{
+  { "Region", "Japan", OPTION, 2, 1, regionJPN },
+  { "Region", "North America", OPTION, 2, 1, regionNA },
+  { "Region", "Europe", DEFAULT_OPTION, 2, 1, regionEUR },
+  { "Region", "Australia", OPTION, 2, 1, regionA }
+} ;
+
 const SPATCHLISTENTRY patchList[] =
 {
-	{ patternLangMaskPatch, patchLangMaskPatch, sizeof(patternLangMaskPatch), "Language Mask"},
-	{ patternFilterPatch, patchFilterPatch, sizeof(patternFilterPatch), "App Filter"},
-	{ patternRegionPatch, patchRegionPatch, sizeof(patternRegionPatch), "Region Info"}
+	{ patternLangMaskPatch, patchLangMaskPatch, sizeof(patternLangMaskPatch), "Language Mask", 0, 0},
+	{ patternFilterPatch, patchFilterPatch, sizeof(patternFilterPatch), "App Filter", 0, 0},
+	{ patternRegionPatch, patchRegionPatch, sizeof(patternRegionPatch), "Region Info", patchOptionsRegions, sizeof(patchOptionsRegions) / sizeof(SPATCHOPTION)}
 } ;
 
 SPATCHRESULT patchResults[] =
