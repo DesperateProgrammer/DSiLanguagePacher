@@ -24,6 +24,7 @@
 	((uint8_t*)&(n))[1] = (b)[i + 2]; \
 	((uint8_t*)&(n))[2] = (b)[i + 1]; \
 	((uint8_t*)&(n))[3] = (b)[i + 0]
+  
 #define PUT_UINT32_BE(n, b, i) \
 	(b)[i + 0] = ((uint8_t*)&(n))[3]; \
 	(b)[i + 1] = ((uint8_t*)&(n))[2]; \

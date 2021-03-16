@@ -28,25 +28,25 @@ extern "C" {
 #endif
 
 void		dsi_set_key( dsi_context* ctx, 
-						 unsigned char key[16] );
+						 const unsigned char key[16] );
 
 void		dsi_add_ctr( dsi_context* ctx,
 						 unsigned int carry );
 
 void		dsi_set_ctr( dsi_context* ctx, 
-						 unsigned char ctr[16] );
+						 const unsigned char ctr[16] );
 
 void		dsi_init_ctr( dsi_context* ctx, 
-						  unsigned char key[16], 
-						  unsigned char ctr[12] );
+						  const unsigned char key[16], 
+						  const unsigned char ctr[12] );
 
 void dsi_crypt_ctr( dsi_context* ctx,
-                    void* in,
+                    const void* in,
                     void* out,
                     unsigned int len);
                     
 void		dsi_crypt_ctr_block( dsi_context* ctx, 
-								 unsigned char input[16], 
+								 const unsigned char input[16], 
 								 unsigned char output[16] );
 
 void		dsi_init_ccm( dsi_context* ctx,

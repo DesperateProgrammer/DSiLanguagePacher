@@ -1,21 +1,20 @@
 #include <nds.h>
 #include <stdio.h>
-#include "nandio.h"
+#include "gm9i/nandio.h"
 #include <fat.h>
 #include<stdarg.h>
 #include<stdio.h>
 #include <dirent.h>
 #include <stdint.h>
-#include "crypto.h"
-#include "f_xy.h"
+#include "gm9i/crypto.h"
+#include "gm9i/f_xy.h"
 #include "polarssl/aes.h"
 #include "twltool/dsi.h"
-#include "f_xy.h"
 #include "u128_math.h"
 
 #define TARGETBUFFER 0x02900000
 
-#define VERSION_STRING "ver. 2.0rc1"
+#define VERSION_STRING "ver. 2.0rc2"
 
 PrintConsole topScreen;
 PrintConsole bottomScreen;
@@ -33,10 +32,11 @@ const u8 patternRegionPatch[] =
   { 0x01, 0x48, 0x00, 0x7a, 0x70, 0x47, 0xc0, 0x46, 0x68, 0xfd, 0xff, 0x02} ;
 const u8 patchRegionPatch[] = 
   { 0x01, 0x4B, 0x02, 0x20, 0x18, 0x72, 0x70, 0x47, 0x68, 0xfd, 0xff, 0x02} ;	
-//             /    \
-//            /      \
-//           /        \
-//          Target Region
+/*             /    \
+              /      \
+             /        \
+            Target Region
+*/
 
 	
 typedef struct SPATCHLISTENTRY
@@ -248,14 +248,15 @@ int main(void) {
 		{
 			// If that file is longer than 1k, unlaunch is appended
 			// Todo: get version of unlaunch
-			struct stat *tmdInfo ;
+			struct stat tmdInfo ;
+      memset(&tmdInfo, 0, sizeof(tmdInfo)) ;
 			char *tmdFileName = (char *)malloc(260) ;
 			strcpy(tmdFileName,appLauncherDirName) ;
 			strcat(tmdFileName,"/") ;
 			strcat(tmdFileName,fileInfo->d_name) ;			
-			stat(tmdFileName, tmdInfo) ;
+			stat(tmdFileName, &tmdInfo) ;
 			free(tmdFileName) ;
-			unlaunchInstalled = (tmdInfo->st_size > 1024) ;
+			unlaunchInstalled = (tmdInfo.st_size > 1024) ;
 			if (unlaunchInstalled)
 			{
 				Log(LOGLEVEL_INFO, "[i] Unlaunch is installed\n") ;

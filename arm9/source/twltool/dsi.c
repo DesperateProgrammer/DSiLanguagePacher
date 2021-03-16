@@ -3,15 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include "u128_math.h"
 
 void dsi_set_key( dsi_context* ctx,
-				 unsigned char key[16] )
+				 const unsigned char key[16] )
 {
-	int i;
 	unsigned char keyswap[16];
-
-	for(i=0; i<16; i++)
-		keyswap[i] = key[15-i];
+  u128_swap(keyswap, key) ;
 
 	aes_setkey_enc(&ctx->aes, keyswap, 128);
 }
@@ -50,7 +48,7 @@ void dsi_add_ctr( dsi_context* ctx,
 }
 				  
 void dsi_set_ctr( dsi_context* ctx,
-				  unsigned char ctr[16] )
+				  const unsigned char ctr[16] )
 {
 	int i;
 
@@ -59,15 +57,15 @@ void dsi_set_ctr( dsi_context* ctx,
 }
 
 void dsi_init_ctr( dsi_context* ctx,
-				   unsigned char key[16],
-				   unsigned char ctr[12] )
+				   const unsigned char key[16],
+				   const unsigned char ctr[12] )
 {
 	dsi_set_key(ctx, key);
 	dsi_set_ctr(ctx, ctr);
 }
 
 void dsi_crypt_ctr( dsi_context* ctx,
-                    void* in,
+                    const void* in,
                     void* out,
                     unsigned int len)
 {
@@ -79,7 +77,7 @@ void dsi_crypt_ctr( dsi_context* ctx,
 }
 
 void dsi_crypt_ctr_block( dsi_context* ctx, 
-						  unsigned char input[16], 
+						  const unsigned char input[16], 
 						  unsigned char output[16] )
 {
 	int i;
@@ -313,10 +311,14 @@ int dsi_es_decrypt( dsi_es_context* ctx,
 	chksize = (scratchpad[13]<<16) | (scratchpad[14]<<8) | (scratchpad[15]<<0);
 
 	if (scratchpad[0] != 0x3A)
+  {
 		return -1;
-        
-    if(chksize != size)
-        return -2;
+  }
+     
+  if (chksize != size)
+  {
+      return -2;
+  }
 
 	memcpy(nonce, metablock + 17, 12);
 
@@ -324,8 +326,10 @@ int dsi_es_decrypt( dsi_es_context* ctx,
 	dsi_decrypt_ccm(&cryptoctx, buffer, buffer, size, genmac);
 
 	if (memcmp(genmac, chkmac, 16) != 0)
+  {
 		return -3;
-
+  }
+  
 	return 0;
 }
 

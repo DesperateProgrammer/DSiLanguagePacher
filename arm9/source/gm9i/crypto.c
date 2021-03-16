@@ -42,9 +42,9 @@ static void generate_key(uint8_t *generated_key, const uint32_t *console_id, con
     default:
       break;
 	}
-	u128_xor(key, mode == ES ? DSi_ES_KEY_Y : DSi_NAND_KEY_Y);
-	u128_add(key, DSi_KEY_MAGIC);
-  u128_lrot(key, 42) ;
+	u128_xor((uint8_t *)key, mode == ES ? DSi_ES_KEY_Y : DSi_NAND_KEY_Y);
+	u128_add((uint8_t *)key, DSi_KEY_MAGIC);
+  u128_lrot((uint8_t *)key, 42) ;
   memcpy(generated_key, key, 16) ;
 }
 
@@ -72,14 +72,6 @@ void dsi_crypt_init(const uint8_t *console_id_be, const uint8_t *emmc_cid, int i
 
 	swiSHA1Calc(nand_ctr_iv, emmc_cid, 16);
 
-}
-
-static inline void aes_ctr(const uint8_t *rk, const uint8_t *ctr, uint8_t *in, uint8_t *out) 
-{
-	uint8_t xor[16];
-	aes_encrypt_128_be(rk, ctr, xor);
-  memcpy(out, in, 16) ;
-	u128_xor(out, xor);
 }
 
 // crypt one block, in/out must be aligned to 32 bit(restriction induced by xor_128)
