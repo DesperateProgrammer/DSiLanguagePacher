@@ -137,11 +137,11 @@ int my_sdmmc_nand_init();
 void my_sdmmc_get_cid(int devicenumber, u32 *cid);
 
 static inline void sdmmc_nand_cid( u32 *cid) {
-    my_sdmmc_get_cid(MMC_DEVICE_NAND,cid);
+    my_sdmmc_get_cid(MMC_DEVICE_NAND, cid);
 }
 
 static inline void sdmmc_sdcard_cid( u32 *cid) {
-    my_sdmmc_get_cid(MMC_DEVICE_SDCARD,cid);
+    my_sdmmc_get_cid(MMC_DEVICE_SDCARD, cid);
 }
 
 int my_sdmmc_sdcard_readsectors(u32 sector_no, u32 numsectors, void *out);

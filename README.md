@@ -1,4 +1,6 @@
-# ![Icon](icon.bmp "Icon")DSi Language Patcher
+# ![Banner](banner.png "Banner")
+
+# ![Icon](icon.bmp "Icon") DSi Language Patcher
 
 The DSi Language patcher is a small tool, which runs on your DSi (homebrew execution required) and create a copy of your original app launcher on the device root as "Launcher.dsi" and applies some patches to it, so it allows the use of other languages than available in your region.
 
@@ -36,6 +38,42 @@ Please always test a derived work in a suitable emulator (i.e. [no$cash Debugger
 
 ## Distribution
 This git only contains the source code. No binary (.nds/.dsi) file is provided but can be created from the source code with help from the above liked framework and libraries.
+
+## Concept
+
+The original app launcher uses some structures  at fixed memory positions to communicate with the app to be started. One of this structures at 0x2FFFD68 contains the language and region info of the DSi. Refer https://problemkaputt.de/gbatek.htm#biosramusage for the known memory data places.
+
+Since the app launcher internally uses a getter on these values instead of accessing them directly, the getter methods are an ideal candidate to modify the language settings.
+
+There are 3 patches implemented.
+
+* "Language Mask":
+
+  The getter for the language mask is patched, so that it will write a constant language pattern to the global structure and return that constant instead of just retrieving the structure member.
+
+  ```  ARM thumb
+  ldr r3, =hwinfo_address
+  mov r0, 7Fh						; Language Mask
+  strb r0, [r3, #maskOffset]
+  bx lr
+  dw hwinfo_address 				
+  ```
+
+* "Region Info"
+
+  The getter for the region ID is patched, so that it will write a constant language pattern to the global structure and return that constant instead of just retrieving the structure member.
+
+  ```  ARM thumb
+  ldr r3, =hwinfo_address
+  mov r0, 2						; Constant Region 2 = EUR
+  strb r0, [r3, #regionOffset]
+  bx lr
+  dw hwinfo_address 				
+  ```
+
+*  "App filter"
+
+  Since the region ID returned by the getter is not the original region of the DSi, the app filter is patched to show the original region apps. For this the decision to blend out an app in the launcher is skipped.
 
 
 
