@@ -67,12 +67,10 @@ bool nandio_startup()
 {
 	if (!nand_Startup()) 
   {
-    iprintf("Failed nandio_startup\r\n");
     return false;
   }
 
 	nand_ReadSectors(0, 1, sector_buf);
-  iprintf("NCSD check: %i\r\n", parse_ncsd(sector_buf)) ;
 	is3DS = parse_ncsd(sector_buf) == 0;
 	//if (is3DS) return false;
 
@@ -90,7 +88,6 @@ bool nandio_startup()
 	dsi_nand_crypt(sector_buf, sector_buf, 0, SECTOR_SIZE / AES_BLOCK_SIZE);
 
 	parse_mbr(sector_buf, is3DS);
-  iprintf("mbr check: %i\r\n", parse_mbr(sector_buf, is3DS)) ;
 
 	mbr_t *mbr = (mbr_t*)sector_buf;
 	
@@ -206,9 +203,11 @@ bool nandio_shutdown()
 	u8 stagingLevels = sector_buf[0x10] ;
 	u8 reservedSectors = sector_buf[0x0E] ;
   u16 sectorsPerFatCopy = sector_buf[0x16] | ((u16)sector_buf[0x17] << 8) ;
+/*
 	iprintf("[i] Staging for %i FAT copies\n",stagingLevels);
 	iprintf("[i] Stages starting at %i\n",reservedSectors);
 	iprintf("[i] %i sectors per stage\n",sectorsPerFatCopy);
+*/
 	if (stagingLevels > 1)
 	{
 		for (u32 sector = 0;sector < sectorsPerFatCopy; sector++)

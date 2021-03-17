@@ -3,8 +3,10 @@
 
 void patch_applyPatternPatches(uint8_t *target, uint32_t size, 
                                const SPATCHLISTENTRY *patches, const uint32_t count,
-                               SPATCHRESULT *result) 
+                               SPATCHRESULT *result, progress_callback_t callback) 
 {
+  uint32_t bytesPerPercent = (size + 1) / 101 ;
+  uint8_t lastReportedProgress = (uint8_t)-1 ;
  	for (uint32_t i=0;i<size;i++)
 	{
 		for (uint32_t patch = 0; patch < count; patch++)
@@ -22,6 +24,15 @@ void patch_applyPatternPatches(uint8_t *target, uint32_t size,
         result[patch].lastFoundOffset = i ;
 			}
 		}		
+    if (callback)
+    {
+      uint8_t progress = i / bytesPerPercent ;
+      if (lastReportedProgress != progress)
+      {
+        lastReportedProgress = progress ;
+        callback(progress) ;
+      }
+    }
 	}
 }
  

@@ -74,7 +74,7 @@ char *system_getTmdFilename(const char *dirName)
   return appFileName ;
 }
 
-uint32_t system_readFile(uint8_t *buffer, const char *filename)
+uint32_t system_readFile(uint8_t *buffer, const char *filename, progress_callback_t callback)
 {
 	FILE *f = fopen(filename, "rb") ;
   if (!f)
@@ -84,17 +84,28 @@ uint32_t system_readFile(uint8_t *buffer, const char *filename)
 	fseek(f, 0, SEEK_SET) ;
 	uint32_t pos = 0 ;
 	uint8_t *target = buffer ;
+  uint32_t bytesPerPercent = (fileSize + 1) / 101 ;
+  uint8_t lastReportedProgress = (uint8_t)-1 ;
 	while (pos < fileSize)
 	{
 		uint32_t read = fread(target, 1, std::min<uint32_t>(512, (fileSize-pos)), f) ;
 		pos += read ;
 		target += read ;
+    if (callback)
+    {
+      uint8_t progress = pos / bytesPerPercent ;
+      if (lastReportedProgress != progress)
+      {
+        lastReportedProgress = progress ;
+        callback(progress) ;
+      }
+    }
 	}
 	fclose(f) ;
   return pos ;
 }
 
-uint32_t system_writeFile(uint8_t *buffer, uint32_t size, const char *filename)
+uint32_t system_writeFile(uint8_t *buffer, uint32_t size, const char *filename, progress_callback_t callback)
 {
   uint32_t pos = 0 ;
   FILE *f = fopen(filename, "wb+") ;
@@ -102,11 +113,22 @@ uint32_t system_writeFile(uint8_t *buffer, uint32_t size, const char *filename)
   {
     return 0;
   }
+  uint32_t bytesPerPercent = (size + 1) / 101 ;
+  uint8_t lastReportedProgress = (uint8_t)-1 ;
   while (pos < size)
   {
     uint32_t written = fwrite(buffer, 1, std::min<uint32_t>(256, (size-pos)), f) ;
     pos += written ;
     buffer += written ;
+    if (callback)
+    {
+      uint8_t progress = pos / bytesPerPercent ;
+      if (lastReportedProgress != progress)
+      {
+        lastReportedProgress = progress ;
+        callback(progress) ;
+      }
+    }
   }
   fclose(f) ;
   return pos;

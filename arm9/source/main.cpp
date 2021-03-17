@@ -14,10 +14,9 @@
 #include "patch.h"
 #include "patch_data.h"
 #include "system_info.h"
+#include "ui.h"
 
 #define TARGETBUFFER 0x02900000
-
-#define VERSION_STRING "ver. 2.0rc2"
 
 PrintConsole topScreen;
 PrintConsole bottomScreen;
@@ -47,41 +46,49 @@ typedef enum LOGLEVEL
 
 void Log(LOGLEVEL level, const char *format, ...)
 {
+  char buffer[256] ;
+  consoleSelect(&topScreen);
 	va_list ap;
 	va_start(ap, format);
 	vprintf(format, ap) ;
+	vsprintf(buffer, format, ap) ;
 	va_end(ap);
-	if (currentScreen->cursorY >= 23)
-	{
-		if (currentScreen == &topScreen)
-		{
-			consoleSelect(&bottomScreen);
-			currentScreen = &bottomScreen;
-		} else
-		{
-			consoleSelect(&topScreen);
-			currentScreen = &topScreen;
-		}
-		consoleClear() ;
-	}
+  consoleSelect(&bottomScreen);
+
 	if (level == LOGLEVEL_ERROR)
 	{
-		while (1) 
-			;
+		WaitForErrorRestart(buffer) ;
 	}
 }
 
-void decrypt_modcrypt_area(dsi_context* ctx, u8 *buffer, unsigned int size)
+typedef void (* progress_callback_t)(uint8_t percent) ;
+
+void decrypt_modcrypt_area(dsi_context* ctx, u8 *buffer, unsigned int size, progress_callback_t callback)
 {
 	uint32_t len = size / 0x10;
 	u8 block[0x10];
+
+  uint32_t bytesPerPercent = (size + 1) / 101 ;
+  uint8_t lastReportedProgress = (uint8_t)-1 ;
+  uint32_t pos = 0 ;
+
 	while(len>0)
 	{
 		memset(block, 0, 0x10);
 		dsi_crypt_ctr_block(ctx, buffer, block);
 		memcpy(buffer, block, 0x10);
 		buffer+=0x10;
+    pos += 0x10;
 		len--;
+    if (callback)
+    {
+      uint8_t progress = pos / bytesPerPercent ;
+      if (lastReportedProgress != progress)
+      {
+        lastReportedProgress = progress ;
+        callback(progress) ;
+      }
+    }
 	}
 }
 
@@ -98,11 +105,11 @@ int main(void) {
 	consoleInit(&bottomScreen, 3,BgType_Text4bpp, BgSize_T_256x256, 31, 0, false, true);
 
 
-	consoleSelect(&topScreen);
-
-	Log(LOGLEVEL_INFO, "Language Patcher\n");
-	Log(LOGLEVEL_INFO, VERSION_STRING);
-	Log(LOGLEVEL_INFO, "\n================\n");
+	consoleSelect(&topScreen);  
+  InfoBorder() ;
+  consoleSetWindow(&topScreen, 0, 2, 32, 22) ;
+	consoleSelect(&bottomScreen);  
+  InfoBorder() ;
 	
 	for (int i=0;i<30;i++)
 		swiWaitForVBlank() ;
@@ -134,7 +141,6 @@ int main(void) {
 		Log(LOGLEVEL_ERROR, "[E] Invalid ConsoleID found!\n");
 	}
 
-	Log(LOGLEVEL_PROGRESS, "[-] Mounting NAND\n") ;
 	if (!fatMountSimple("nand", &io_dsi_nand))
 	{
 		Log(LOGLEVEL_ERROR, "[E] Could not mount NAND\n");
@@ -151,7 +157,6 @@ int main(void) {
 	humanReadableByteSize(nandSize, buffer, sizeof(buffer)) ;
 	Log(LOGLEVEL_INFO, "[i] NAND Size: %s\n", buffer);
 	
-	Log(LOGLEVEL_PROGRESS, "[-] Locating Launcher\n") ;
 	uint8_t launcherRegion = 0 ;
 	
 	char * appLauncherDirName = system_getLauncherPath(&launcherRegion);
@@ -195,10 +200,11 @@ int main(void) {
 		Log(LOGLEVEL_ERROR, "[E] Could not find app\n");
 	}
 	
-	Log(LOGLEVEL_PROGRESS, "[-] Reading launcher\n") ;
-
   uint8_t *target = (uint8_t *)TARGETBUFFER ;
-	uint32_t appLauncherSize = system_readFile(target, appFileName) ;
+  
+  CreateProgress("Reading Launcher") ;
+	uint32_t appLauncherSize = system_readFile(target, appFileName, &UpdateProgress) ;
+  ClearProgress() ;
 	
 	humanReadableByteSize(appLauncherSize, buffer, sizeof(buffer)) ;
 	Log(LOGLEVEL_INFO, "[i] Launcher Size: %s\n", buffer);	
@@ -208,21 +214,20 @@ int main(void) {
 	{
 		Log(LOGLEVEL_ERROR, "[E] Could not read launcher\n");
 	}
-	
+  
 	if (target[0x01C] & 2)
 	{
+    CreateProgress("Processing modcrypt #1") ;
+
 		u8 key[16] = {0} ;
 		u8 keyp[16] = {0} ;
-		Log(LOGLEVEL_PROGRESS, "[-] Undo modcrypt\n") ;
 		if (target[0x01C] & 4)
 		{
 			// Debug Key
-			Log(LOGLEVEL_PROGRESS, "[-] Debug key\n") ;
 			memcpy(key, target, 16) ;
 		} else
 		{
 			//Retail key
-			Log(LOGLEVEL_PROGRESS, "[-] Retail key\n") ;
 			char modcrypt_shared_key[8] = {'N','i','n','t','e','n','d','o'};
 			memcpy(keyp, modcrypt_shared_key, 8) ;
 			for (int i=0;i<4;i++)
@@ -241,11 +246,6 @@ int main(void) {
 		modcryptOffsets[1] = ((uint32_t *)(target+0x220))[2] ;
 		modcryptLengths[0] = ((uint32_t *)(target+0x220))[1] ;
 		modcryptLengths[1] = ((uint32_t *)(target+0x220))[3] ;
-		Log(LOGLEVEL_INFO, "[i] Region at %04xh\n", modcryptOffsets[0]) ;
-		Log(LOGLEVEL_INFO, "      size %04xh\n", modcryptLengths[0]) ;
-		Log(LOGLEVEL_INFO, "[i] Region at %04xh\n", modcryptOffsets[1]) ;
-		Log(LOGLEVEL_INFO, "      size %04xh\n", modcryptLengths[1]) ;
-
 
 		uint32_t rk[4];
 		memcpy(rk, key, 16) ;
@@ -255,25 +255,26 @@ int main(void) {
 		dsi_set_ctr(&ctx, &target[0x300]);
 		if (modcryptLengths[0])
 		{
-			decrypt_modcrypt_area(&ctx, target+modcryptOffsets[0], modcryptLengths[0]);
+			decrypt_modcrypt_area(&ctx, target+modcryptOffsets[0], modcryptLengths[0], &UpdateProgress);
 		}
+    ClearProgress() ;
+
+    CreateProgress("Processing modcrypt #2") ;
 		dsi_set_key(&ctx, key);
 		dsi_set_ctr(&ctx, &target[0x314]);
 		if (modcryptLengths[1])
 		{
-			decrypt_modcrypt_area(&ctx, target+modcryptOffsets[1], modcryptLengths[1]);
+			decrypt_modcrypt_area(&ctx, target+modcryptOffsets[1], modcryptLengths[1], &UpdateProgress);
 		}
 
-		Log(LOGLEVEL_PROGRESS, "[-] fixing regions\n") ;
 		for (int i=0;i<4;i++)
 		{
 			((uint32_t *)(target+0x220))[i] = 0;
 		}
-		Log(LOGLEVEL_PROGRESS, "[-] modcrypt done\n") ;
+    
+    ClearProgress() ;
 	}
 
-	Log(LOGLEVEL_PROGRESS, "[-] patching ...\n") ;
-  
   SPATCHRESULT patchResults[] =
   {
     {0, 0},
@@ -282,8 +283,11 @@ int main(void) {
   };  
   
   const uint32_t patchCount = sizeof(patchList) / sizeof(SPATCHLISTENTRY) ;
+
+  CreateProgress("Applying patches") ;
   patch_applyPatternPatches(target, appLauncherSize,
-                            patchList, patchCount, patchResults) ;
+                            patchList, patchCount, patchResults, &UpdateProgress) ;
+  ClearProgress() ;
 
   for (uint32_t i=0;i<patchCount;i++)
   {
@@ -297,51 +301,44 @@ int main(void) {
     }
     Log(LOGLEVEL_INFO, "[i] Patch \'%s\' found\n", patchList[i].name) ;
   }
-  	
-	Log(LOGLEVEL_PROGRESS, "[-] patching done in RAM\n") ;
+  
+  Log(LOGLEVEL_PROGRESS, "[-] getting options\n") ;
+  std::vector<SOPTIONSELECT> 
+    options = patch_getAvailableOptions(patchList, patchCount) ;
+  
+  patch_applySelectedOptions(target, appLauncherSize,
+                                patchList, patchResults, patchCount, 
+                                options) ;              
+  
+	WaitForPowercord() ;
 	
-	Log(LOGLEVEL_WARNING, "\n[!] Please plug in") ;
-	Log(LOGLEVEL_WARNING, "\n      power cord\n");
-	
-	while(1) {
-		swiWaitForVBlank();
-		scanKeys();
-		if (getBatteryLevel() & 0x80)
-			break;
-	}	
-	
-	Log(LOGLEVEL_INFO, "\n==================");
-	Log(LOGLEVEL_INFO, "\n Hit [A] to apply ");
-	Log(LOGLEVEL_INFO, "\n    !CAUTION!     ");
-	Log(LOGLEVEL_INFO, "\n  Risk to brick!  ");
-	Log(LOGLEVEL_INFO, "\n==================\n\n");
+  if (!WaitForKonami("Write to internal NAND\n"
+                "     CAUTION! Risk to brick!"))
+  {
+    Log(LOGLEVEL_ERROR, "[E] Failed to enter code\n") ;
+  }
 
-	while(1) {
-		swiWaitForVBlank();
-		scanKeys();
-		if (keysDown() & KEY_A)
-		{
-			// we will write the file back to NAND at root
-			Log(LOGLEVEL_PROGRESS, "[-] writing ...\n") ;
-      uint32_t written = system_writeFile((uint8_t *)TARGETBUFFER, appLauncherSize, "nand:/launcher.dsi") ;
-			if (!written)
-			{
-				Log(LOGLEVEL_ERROR, "[E] Create file failed\n    You can turn off now\n") ;
-			}
-			if (written < appLauncherSize)
-			{
-				Log(LOGLEVEL_ERROR, "[E] Write file failed\n    You can turn off now\n") ;
-			}
+  // we will write the file back to NAND at root
+  CreateProgress("Writing to NAND") ;
+  uint32_t written = system_writeFile((uint8_t *)TARGETBUFFER, appLauncherSize, "nand:/launcher.dsi", &UpdateProgress) ;
+  ClearProgress() ;
+  
+  if (!written)
+  {
+    Log(LOGLEVEL_ERROR, "[E] Create file failed\n    You can turn off now\n") ;
+  }
+  if (written < appLauncherSize)
+  {
+    Log(LOGLEVEL_ERROR, "[E] Write file failed\n    You can turn off now\n") ;
+  }
 
-			Log(LOGLEVEL_PROGRESS, "[-] Unmounting\n") ;
-			fatUnmount("nand:") ;
-			Log(LOGLEVEL_PROGRESS, "[-] Merging stages\n");
-			nandio_shutdown() ;			
-			Log(LOGLEVEL_INFO, "[i] ALL DONE\n") ;
-			Log(LOGLEVEL_INFO, "    You can turn off now\n") ;
-			while(1) ;
-		}
-	}
+  Log(LOGLEVEL_PROGRESS, "[-] Unmounting\n") ;
+  fatUnmount("nand:") ;
+  Log(LOGLEVEL_PROGRESS, "[-] Merging stages\n");
+  nandio_shutdown() ;			
+  
+  WaitForSuccessRestart() ;
+  while(true) 
+    ;
 
-	return 0;
 }
