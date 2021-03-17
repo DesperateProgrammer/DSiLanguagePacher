@@ -167,9 +167,9 @@ int main(void) {
 	}
 	
 	Log(LOGLEVEL_INFO, "[i] Launcher Region:\n      %s\n",  knownRegions[launcherRegion].name);
-	if ( knownRegions[launcherRegion].code != 0)
+	if ( knownRegions[launcherRegion].code > 3)
 	{
-		Log(LOGLEVEL_ERROR, "[E] Launcher is not japanese\n");
+		Log(LOGLEVEL_ERROR, "[E] Launcher is KOR or CHN\n");
 	}	
 	
 	char * appFileName = system_getAppFilename(appLauncherDirName) ;
@@ -305,6 +305,11 @@ int main(void) {
   Log(LOGLEVEL_PROGRESS, "[-] getting options\n") ;
   std::vector<SOPTIONSELECT> 
     options = patch_getAvailableOptions(patchList, patchCount) ;
+    
+  for (uint32_t i = 0;i<options.size();i++)
+  {
+    options[i].selection = OptionSelect(options[i].name, options[i].values, options[i].selection) ;
+  }
   
   patch_applySelectedOptions(target, appLauncherSize,
                                 patchList, patchResults, patchCount, 

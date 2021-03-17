@@ -25,6 +25,50 @@ void InfoBorder()
   iprintf("--------------------------------") ; 
 }
 
+uint32_t OptionSelect(const char *name, std::vector<const char *>values, uint32_t defaultIndex)
+{
+  consoleClear() ;
+  InfoBorder() ;
+  uint32_t selected = defaultIndex ;
+  while (true)
+  {
+    swiWaitForVBlank();
+    scanKeys() ;
+    uint16_t keys_down = keysDown() ;
+    SetCursorPos(5,5) ;
+    SetTextColor(39) ;
+    iprintf("Select %s:", name) ;
+    for (uint32_t i=0;i<values.size();i++)
+    {
+      SetTextColor(i == selected?32:39) ;
+      SetCursorPos(5, 7+i) ;
+      iprintf(" - %s", values[i]) ;
+    }
+    if (keys_down & KEY_UP)
+    {
+      if (selected == 0)
+        selected = values.size()-1 ;
+      else
+        selected-- ;        
+    }
+    if (keys_down & KEY_DOWN)
+    {
+      if (selected == values.size()-1)
+        selected = 0 ;
+      else
+        selected++ ;        
+    }
+    if (keys_down & KEY_A)
+    {
+      SetTextColor(39) ;
+      consoleClear() ;
+      InfoBorder() ;
+      return selected ;
+    }    
+  }
+}
+
+
 void CreateProgress(const char *msg)
 {
   consoleClear() ;
