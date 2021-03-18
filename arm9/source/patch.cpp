@@ -17,8 +17,9 @@ void patch_applyPatternPatches(uint8_t *target, uint32_t size,
       // check if the pattern does match at this position
 			if (memcmp(target+i, patches[patch].pattern, patches[patch].size) == 0)
 			{
-        // apply the patch!
-				memcpy(target+i, patches[patch].patch, patches[patch].size) ;
+        // apply the patch, if there is one
+        if (patches[patch].patch)
+          memcpy(target+i, patches[patch].patch, patches[patch].size) ;
         // write back result
         result[patch].matchCount++ ;
         result[patch].lastFoundOffset = i ;
