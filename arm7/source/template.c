@@ -104,12 +104,14 @@ int main() {
 	if (isDSiMode() /*|| ((REG_SCFG_EXT & BIT(17)) && (REG_SCFG_EXT & BIT(18)))*/) {
 		u8 *out=(u8*)0x02300000;
 
+#if USENATIVECONSOLEID
 		// first check whether we can read the console ID directly and it was not hidden by SCFG
 		if (((*(volatile uint16_t *)0x04004000) & (1u << 10)) == 0)
 		{
 			// The console id registers are readable, so use them!
 			memcpy(out, (uint8_t *)0x04004D00, 8);
 		} else
+#endif
 		{
 			// For getting ConsoleID without reading from 0x4004D00...
 			u8 base[16]={0};

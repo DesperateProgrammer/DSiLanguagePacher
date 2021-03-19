@@ -21,7 +21,7 @@ static void SetTextColor(uint8_t color)
 
 void InfoBorder()
 {
-  iprintf("DSi Language Patcher     v2.0rc3") ;
+  iprintf("DSi Language Patcher     v2.0rc4") ;
   iprintf("--------------------------------") ; 
 }
 
