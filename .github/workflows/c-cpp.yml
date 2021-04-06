@@ -34,3 +34,13 @@ jobs:
         id: build
         run: |
           make
+      - name: Publish build to GH Actions
+        uses: actions/upload-artifact@v2
+        with:
+          path: ~/DSiLanguagePacher.nds
+          name: build
+
+
+
+
+
